@@ -25,27 +25,20 @@ def make_new_path(name):
 
 
 def scrap_info(soup):
-    dico={}
-    index=0
+    dico={'city':[],'price':[],'size':[],'rooms':[],'floor':[]}
     items=soup.find_all('div',{'class':'feeditem'})
     for item in items:
-        dico[index]={'city':None,'price':None,'size':None,'rooms':None,'floor':None}
         if (item.find('div',{'class':'data rooms-item'})):
-            dico[index]['rooms']=item.find('div',{'class':'data rooms-item'}).text
+            dico['rooms'].append(item.find('div',{'class':'data rooms-item'}).text)
         if (item.find('div',{'class':'data floor-item'})):
-            dico[index]['floor'] =item.find('div',{'class':'data floor-item'}).text
+            dico['floor'].append(item.find('div',{'class':'data floor-item'}).text)
         if (item.find('div',{'class':'data SquareMeter-item'})):
-         dico[index]['size']=item.find('div',{'class':'data SquareMeter-item'}).text
+         dico['size'].append(item.find('div',{'class':'data SquareMeter-item'}).text)
         if(item.find('div', {'data-test-id': 'item_price'})):
-            dico[index]['price'] = (((item.find('div', {'data-test-id': 'item_price'}).text).split('\n')[1]).strip())
+            dico['price'].append((((item.find('div', {'data-test-id': 'item_price'}).text).split('\n')[1]).strip()))
         if(item.find('span', {'class': 'subtitle'})):
-            dico[index]['city'] = (item.find('span', {'class': 'subtitle'}).text)
-        yield dico
-
-
-def data_frame(info):
-    table=pd.DataFrame(info)
-    table.to_csv('data.csv')
+            dico['city'].append((item.find('span', {'class': 'subtitle'}).text))
+    return dico
 
 
 def select_parmaters():
@@ -67,7 +60,6 @@ def select_parmaters():
     url += f'&price={Price_until}-{end_price}'
     return url
 
-
 headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
          'Referer':'https://www.yad2.co.il',
          'DNT':'1',
@@ -76,22 +68,21 @@ headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/53
 
 
 with requests.session() as session:
-    fileds = []
     url=select_parmaters()
-    print(url)
     respones=session.get(url,headers=headers)
     page=bs(respones.text,'html.parser')
-    for data in scrap_info(page):
-        fileds.append(data[0])
+    dict1=scrap_info(page)
     while(next_page(page)):
-        respones = session.get(make_new_path(next_page(page)),headers=headers)
-        page = bs(respones.text, 'html.parser')
-        for data in scrap_info(page):
-            fileds.append(data[0])
-    data_frame(fileds)
-
-
-
+       respones = session.get(make_new_path(next_page(page)),headers=headers)
+       page = bs(respones.text, 'html.parser')
+       info=scrap_info(page)
+       dict1['city'].extend(info['city'])
+       dict1['price'].extend(info['price'])
+       dict1['size'].extend(info['size'])
+       dict1['rooms'].extend(info['rooms'])
+       dict1['floor'].extend(info['floor'])
+    df=pd.DataFrame(dict1)
+    df.to_csv('data.csv')
 
 
 
